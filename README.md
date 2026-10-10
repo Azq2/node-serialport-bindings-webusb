@@ -132,6 +132,10 @@ In NodeJS:
 DEBUG=serialport:webusb:* node app.js
 ```
 
+# SEE ALSO
+
+[WebSerial bindings for SerialPort](https://github.com/Azq2/node-serialport-bindings-webserial)
+
 # DEVELOPMENT
 
 #### SOFTWARE TESTS
