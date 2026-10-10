@@ -1,0 +1,7 @@
+packages:
+  - .
+
+allowBuilds:
+  '@sie-js/node-serialport-bindings-cpp': false
+  esbuild: true
+  usb: true

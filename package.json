@@ -1,0 +1,73 @@
+{
+	"name": "serialport-bindings-webusb",
+	"version": "0.1.0",
+	"description": "WebUSB and node-usb serial port bindings",
+	"type": "module",
+	"main": "dist/src/node.js",
+	"browser": "dist/src/browser.js",
+	"types": "dist/src/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/src/index.d.ts",
+			"browser": "./dist/src/browser.js",
+			"node": "./dist/src/node.js",
+			"default": "./dist/src/browser.js"
+		}
+	},
+	"files": [
+		"dist/src"
+	],
+	"scripts": {
+		"clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+		"build": "pnpm clean && tsc -p tsconfig.build.json",
+		"build:test": "pnpm clean && tsc",
+		"test": "vitest run",
+		"test:hardware": "WEBUSB_HARDWARE=1 vitest run test/hardware/Loopback.test.ts",
+		"test:hardware:at": "WEBUSB_HARDWARE=1 vitest run test/hardware/AT.test.ts",
+		"test:hardware:bfc": "WEBUSB_HARDWARE=1 vitest run test/hardware/BFC.test.ts",
+		"test:hardware:chaos": "WEBUSB_HARDWARE=1 vitest run test/hardware/Chaos.test.ts",
+		"test:hardware:usb-serial-emu": "WEBUSB_HARDWARE=1 vitest run test/hardware/USBSerialEmulator.test.ts",
+		"test:browser": "playwright test",
+		"test:browser:hardware": "pnpm build:test && WEBUSB_HARDWARE=1 playwright test test/browser/HardwareLoopback.test.ts",
+		"test:browser:hardware:at": "pnpm build:test && WEBUSB_HARDWARE=1 playwright test test/browser/HardwareAT.test.ts",
+		"test:browser:hardware:bfc": "pnpm build:test && WEBUSB_HARDWARE=1 playwright test test/browser/HardwareBFC.test.ts",
+		"test:browser:hardware:chaos": "pnpm build:test && WEBUSB_HARDWARE=1 playwright test test/browser/HardwareChaos.test.ts",
+		"test:browser:hardware:usb-serial-emu": "pnpm build:test && WEBUSB_HARDWARE=1 playwright test test/browser/HardwareUSBSerialEmulator.test.ts",
+		"example:chaos-read": "pnpm build:test && node dist/examples/chaos-read.js"
+	},
+	"engines": {
+		"node": ">=22.12.0"
+	},
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/siemens-mobile-hacks/node-serialport-bindings-webusb.git"
+	},
+	"peerDependencies": {
+		"@serialport/bindings-interface": "^1.2.2",
+		"usb": "^2.18.0"
+	},
+	"peerDependenciesMeta": {
+		"usb": {
+			"optional": true
+		}
+	},
+	"dependencies": {
+		"@types/w3c-web-usb": "^1.0.14",
+		"debug": "^4.4.3"
+	},
+	"devDependencies": {
+		"@playwright/test": "^1.63.0",
+		"@serialport/bindings-interface": "^1.2.2",
+		"@serialport/stream": "^13.0.0",
+		"@sie-js/serial": "^1.1.19",
+		"@types/debug": "^4.1.13",
+		"@types/node": "^22.20.0",
+		"typescript": "^5.9.3",
+		"usb": "^2.18.0",
+		"vite": "^8.2.2",
+		"vite-plugin-node-polyfills": "^0.28.0",
+		"vitest": "^5.0.0"
+	},
+	"packageManager": "pnpm@11.3.0"
+}

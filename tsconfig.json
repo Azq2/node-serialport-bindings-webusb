@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"declaration": true,
+		"rootDir": ".",
+		"outDir": "./dist",
+		"target": "ESNext",
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"strict": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"skipLibCheck": true,
+		"lib": ["ESNext", "DOM"]
+	},
+	"include": ["src/**/*.ts", "test/**/*.ts", "examples/**/*.ts", "playwright.config.ts", "vite.browser.config.ts", "vitest.config.ts"],
+	"exclude": ["node_modules", "dist"]
+}
