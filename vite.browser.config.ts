@@ -6,6 +6,7 @@ export default defineConfig({
 	root: 'test/browser/app',
 	optimizeDeps: {
 		exclude: ['browser-process-base'],
+		include: ['@serialport/stream', '@sie-js/serial'],
 	},
 	resolve: {
 		alias: {
