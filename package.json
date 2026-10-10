@@ -41,7 +41,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/siemens-mobile-hacks/node-serialport-bindings-webusb.git"
+		"url": "https://github.com/Azq2/node-serialport-bindings-webusb.git"
 	},
 	"peerDependencies": {
 		"@serialport/bindings-interface": "^1.2.2",

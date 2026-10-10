@@ -7,11 +7,11 @@ Works with `navigator.usb` in Chromium and with `usb` 2.x in NodeJS.
 
 Supported drivers:
 
-- PL2303 and PL256X, including Siemens DCA-540 and DCA-140
+- PL2303 and PL256X
 - CH340 and CH341
 - CP210x
 - FTDI
-- CDC-ACM, including Panasonic and SoftBank devices
+- CDC-ACM
 
 # INSTALL
 
