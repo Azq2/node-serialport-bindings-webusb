@@ -32,8 +32,7 @@
 		"test:browser:hardware:at": "pnpm build:test && WEBUSB_HARDWARE=1 playwright test test/browser/HardwareAT.test.ts",
 		"test:browser:hardware:bfc": "pnpm build:test && WEBUSB_HARDWARE=1 playwright test test/browser/HardwareBFC.test.ts",
 		"test:browser:hardware:chaos": "pnpm build:test && WEBUSB_HARDWARE=1 playwright test test/browser/HardwareChaos.test.ts",
-		"test:browser:hardware:usb-serial-emu": "pnpm build:test && WEBUSB_HARDWARE=1 playwright test test/browser/HardwareUSBSerialEmulator.test.ts",
-		"example:chaos-read": "pnpm build:test && node dist/examples/chaos-read.js"
+		"test:browser:hardware:usb-serial-emu": "pnpm build:test && WEBUSB_HARDWARE=1 playwright test test/browser/HardwareUSBSerialEmulator.test.ts"
 	},
 	"engines": {
 		"node": ">=22.12.0"
