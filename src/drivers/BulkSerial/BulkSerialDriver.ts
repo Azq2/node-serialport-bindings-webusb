@@ -4,7 +4,7 @@ import { WebUSBError } from '../../WebUSBError.js';
 import { transferOutChunks } from '../transferOut.js';
 import type { USBSerialDriver, USBSerialOpenOptions } from '../types.js';
 
-const debug = createDebug('serialport:webusb:bulk');
+const debug = createDebug('serialport/bindings-webusb/bulk');
 
 export interface BulkSerialPort {
 	readonly interfaceNumbers: readonly number[];

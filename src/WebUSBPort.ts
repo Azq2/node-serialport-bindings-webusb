@@ -9,7 +9,7 @@ import type { USBSerialDriver } from './drivers/types.js';
 import { canceledError, WebUSBError } from './WebUSBError.js';
 import type { ResolvedWebUSBOpenOptions, WebUSBPortBinding } from './types.js';
 
-const debug = createDebug('serialport:webusb:binding');
+const debug = createDebug('serialport/bindings-webusb');
 
 export class WebUSBPort implements WebUSBPortBinding {
 	readonly openOptions: Required<OpenOptions>;

@@ -11,7 +11,7 @@ import {
 import type { USBSerialDeviceInfo, USBSerialOpenOptions } from '../types.js';
 import { CP210X_DEVICES } from './devices.js';
 
-const debug = createDebug('serialport:webusb:cp210x');
+const debug = createDebug('serialport/bindings-webusb/cp210x');
 
 const IFC_ENABLE = 0x00;
 const SET_LINE_CTL = 0x03;

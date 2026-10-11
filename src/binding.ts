@@ -15,7 +15,7 @@ import type {
 } from './types.js';
 import { formatUSBId, matchesPortPath } from './utils.js';
 
-const debug = createDebug('serialport:webusb:binding');
+const debug = createDebug('serialport/bindings-webusb');
 
 function createDriver(device: USBDevice, interfaceNumber?: number): USBSerialDriver {
 	const definition = getUSBSerialDriverDefinition(device);

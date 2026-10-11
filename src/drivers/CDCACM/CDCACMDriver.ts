@@ -5,7 +5,7 @@ import { activeAlternate, BulkSerialDriver, webUSBBytes, type BulkSerialPort } f
 import type { USBSerialDeviceInfo, USBSerialOpenOptions } from '../types.js';
 import { CDC_ACM_DEVICE_RULES, type CDCACMDeviceRule, type CDCACMQuirk } from './devices.js';
 
-const debug = createDebug('serialport:webusb:cdc-acm');
+const debug = createDebug('serialport/bindings-webusb/cdc-acm');
 
 const COMMUNICATIONS_CLASS = 0x02;
 const ACM_SUBCLASS = 0x02;

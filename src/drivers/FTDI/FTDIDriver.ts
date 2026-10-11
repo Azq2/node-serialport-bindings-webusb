@@ -16,7 +16,7 @@ import {
 } from './devices.js';
 import type { USBSerialDeviceInfo, USBSerialOpenOptions } from '../types.js';
 
-const debug = createDebug('serialport:webusb:ftdi');
+const debug = createDebug('serialport/bindings-webusb/ftdi');
 
 const RESET = 0;
 const MODEM_CTRL = 1;

@@ -6,7 +6,7 @@ import { WebUSBError } from '../../WebUSBError.js';
 import { transferOutChunks } from '../transferOut.js';
 import type { USBSerialDeviceInfo, USBSerialDriver, USBSerialOpenOptions } from '../types.js';
 
-const debug = createDebug('serialport:webusb:pl2303');
+const debug = createDebug('serialport/bindings-webusb/pl2303');
 
 const REQUEST_SET_LINE = 0x20;
 const REQUEST_GET_LINE = 0x21;

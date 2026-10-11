@@ -6,7 +6,7 @@ import {
 import type { WebUSBPortInfo } from './types.js';
 import { createPortPath, formatUSBId } from './utils.js';
 
-const debug = createDebug('serialport:webusb:binding');
+const debug = createDebug('serialport/bindings-webusb');
 
 interface USBDeviceMetadata {
 	manufacturer: string | undefined;

@@ -10,7 +10,7 @@ import {
 } from '../BulkSerial/BulkSerialDriver.js';
 import type { USBSerialDeviceInfo, USBSerialOpenOptions } from '../types.js';
 
-const debug = createDebug('serialport:webusb:ch341');
+const debug = createDebug('serialport/bindings-webusb/ch341');
 
 const REQUEST_READ_VERSION = 0x5F;
 const REQUEST_WRITE_REG = 0x9A;

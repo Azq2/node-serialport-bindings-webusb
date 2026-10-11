@@ -125,13 +125,13 @@ pnpm add serialport-bindings-webusb @serialport/stream usb@^2.18.0
 In a browser, enable debug output and reload the page:
 
 ```js
-localStorage.debug = 'serialport:webusb:*';
+localStorage.debug = 'serialport/bindings-webusb*';
 ```
 
 In NodeJS:
 
 ```sh
-DEBUG=serialport:webusb:* node app.js
+DEBUG=serialport/bindings-webusb* node app.js
 ```
 
 # SEE ALSO
