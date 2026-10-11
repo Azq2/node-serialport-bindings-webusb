@@ -75,8 +75,10 @@ pnpm add serialport-bindings-webusb @serialport/stream usb@^2.18.0
 4. Open a `USBDevice` returned by `navigator.usb`:
 
    ```ts
+   import { WEBUSB_SERIAL_FILTERS } from 'serialport-bindings-webusb';
+
    const usbDevice = await navigator.usb.requestDevice({
-   	filters: [{ vendorId: 0x067B, productId: 0x2303 }],
+   	filters: [...WEBUSB_SERIAL_FILTERS],
    });
 
    const port = new SerialPortStream<WebUSBBindingInterface>({

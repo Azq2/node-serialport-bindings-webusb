@@ -1,6 +1,7 @@
 import createDebug from 'debug';
 import type { PortStatus, SetOptions, UpdateOptions } from '@serialport/bindings-interface' with { 'resolution-mode': 'require' };
 import { WebUSBError } from '../../WebUSBError.js';
+import { transferOutChunks } from '../transferOut.js';
 import type { USBSerialDriver, USBSerialOpenOptions } from '../types.js';
 
 const debug = createDebug('serialport:webusb:bulk');
@@ -236,19 +237,13 @@ export abstract class BulkSerialDriver implements USBSerialDriver {
 
 	async write(data: Uint8Array): Promise<void> {
 		const endpoint = this.requirePort().outEndpoint.endpointNumber;
+		await transferOutChunks(this.device, endpoint, this.outputChunks(data), 'USB');
+	}
+
+	private *outputChunks(data: Uint8Array): Generator<Uint8Array<ArrayBuffer>> {
 		for (let offset = 0; offset < data.byteLength; offset += this.bulkWriteLength) {
-			const source = data.subarray(offset, offset + this.bulkWriteLength);
-			for (const chunk of this.encodeOutput(source)) {
-				const result = await this.device.transferOut(endpoint, webUSBBytes(chunk));
-				if (result.status !== 'ok')
-					throw new WebUSBError(`USB bulk-out transfer failed with status ${result.status}`, { cause: result });
-				if (result.bytesWritten !== chunk.byteLength) {
-					throw new WebUSBError(
-						`USB bulk-out transfer wrote ${result.bytesWritten} of ${chunk.byteLength} bytes`,
-						{ cause: result },
-					);
-				}
-			}
+			for (const chunk of this.encodeOutput(data.subarray(offset, offset + this.bulkWriteLength)))
+				yield webUSBBytes(chunk);
 		}
 	}
 

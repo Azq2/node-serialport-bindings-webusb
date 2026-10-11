@@ -1,7 +1,9 @@
 import type { PortStatus, SetOptions, UpdateOptions } from '@serialport/bindings-interface' with { 'resolution-mode': 'require' };
 import createDebug from 'debug';
+import { ByteRingBuffer } from '../../ByteRingBuffer.js';
 import { dataViewBytes, formatUSBId } from '../../utils.js';
 import { WebUSBError } from '../../WebUSBError.js';
+import { transferOutChunks } from '../transferOut.js';
 import type { USBSerialDeviceInfo, USBSerialDriver, USBSerialOpenOptions } from '../types.js';
 
 const debug = createDebug('serialport:webusb:pl2303');
@@ -36,8 +38,11 @@ const UART_OVERRUN_ERROR = 0x40;
 const UART_CTS = 0x80;
 const UART_ERROR_MASK = UART_BREAK_ERROR | UART_FRAME_ERROR | UART_PARITY_ERROR | UART_OVERRUN_ERROR;
 
-const BULK_READ_COUNT = 16 * 1024;
+const BULK_READ_COUNT = 2;
+const BROWSER_BULK_READ_BUDGET_MS = 200;
+const BROWSER_BULK_READ_MAX_COUNT = 32 * 1024;
 const BULK_READ_SIZE = 256;
+const BULK_READ_BUFFER_SIZE = 64 * 1024;
 const BULK_WRITE_SIZE = 256;
 
 const FLOW_CONTROL_MASK = 0xF0;
@@ -375,6 +380,19 @@ function isStalledTransfer(error: unknown): boolean {
 	return typeof cause === 'object' && cause !== null && 'status' in cause && cause.status === 'stall';
 }
 
+function* chunkBytes(data: Uint8Array<ArrayBuffer>, size: number): Generator<Uint8Array<ArrayBuffer>> {
+	for (let offset = 0; offset < data.byteLength; offset += size)
+		yield data.subarray(offset, offset + size);
+}
+
+function isBrowserUSBDevice(device: USBDevice): boolean {
+	return typeof USBDevice !== 'undefined' && device instanceof USBDevice;
+}
+
+function browserBulkReadCount(baudRate: number): number {
+	return Math.min(Math.ceil(baudRate / 10 * BROWSER_BULK_READ_BUDGET_MS / 1000), BROWSER_BULK_READ_MAX_COUNT);
+}
+
 export class PL2303Driver implements USBSerialDriver {
 	static readonly supportedDevices = PL2303_DEVICES;
 	static getInterfaceNumbers(device: USBDevice): number[] {
@@ -409,9 +427,9 @@ export class PL2303Driver implements USBSerialDriver {
 	private noBreakGetLine = false;
 	private opened = false;
 	private closing?: Promise<void>;
-	private readonly bulkReadResults: Uint8Array[] = [];
-	private bulkReadResultIndex = 0;
-	private bulkReadResultOffset = 0;
+	private readonly bulkReadBuffer = new ByteRingBuffer(BULK_READ_BUFFER_SIZE);
+	private bulkReadTarget = 0;
+	private bulkReadActive = 0;
 	private bulkReadReceiver?: BulkReadReceiver;
 	private bulkReadFailure?: BulkReadFailure;
 
@@ -471,12 +489,12 @@ export class PL2303Driver implements USBSerialDriver {
 			this.statusError = undefined;
 			this.opened = true;
 			this.startStatusRead();
-			this.startBulkReads();
+			this.resizeBulkReads(options.baudRate);
 			this.lineControl = CONTROL_DTR | CONTROL_RTS;
 			await this.ignoreStalledRequest(this.setControlLines(), 'set control lines');
 		} catch (error) {
 			this.opened = false;
-			this.clearBulkReadResults();
+			this.bulkReadBuffer.clear();
 			await this.cleanupAfterFailedOpen();
 			throw error;
 		}
@@ -500,7 +518,7 @@ export class PL2303Driver implements USBSerialDriver {
 		receiver?.reject(new DOMException('The PL2303 device was closed', 'AbortError'));
 		if (!this.device.opened) {
 			this.claimedInterfaces = [];
-			this.clearBulkReadResults();
+			this.bulkReadBuffer.clear();
 			this.bulkReadReceiver = undefined;
 			return;
 		}
@@ -548,14 +566,14 @@ export class PL2303Driver implements USBSerialDriver {
 			rememberError(error);
 		}
 		this.claimedInterfaces = [];
-		this.clearBulkReadResults();
+		this.bulkReadBuffer.clear();
 		this.bulkReadReceiver = undefined;
 		if (firstError)
 			throw firstError;
 	}
 
 	read(buffer: Uint8Array, offset: number, length: number): number | Promise<number> {
-		const bytesRead = this.consumeBulkReadResults(buffer, offset, length);
+		const bytesRead = this.bulkReadBuffer.read(buffer, offset, length);
 		if (bytesRead > 0)
 			return bytesRead;
 		if (this.bulkReadFailure)
@@ -573,26 +591,11 @@ export class PL2303Driver implements USBSerialDriver {
 		const transferData = data.buffer instanceof ArrayBuffer ?
 			new Uint8Array(data.buffer, data.byteOffset, data.byteLength) :
 			Uint8Array.from(data);
-		let offset = 0;
-		while (offset < transferData.byteLength) {
-			const chunk = transferData.subarray(offset, offset + BULK_WRITE_SIZE);
-			const result = await this.device.transferOut(endpoint, chunk);
-			if (result.status === 'stall')
-				throw new WebUSBError('PL2303 bulk-out endpoint stalled', { cause: result });
-			if (result.status !== 'ok')
-				throw new WebUSBError(`PL2303 bulk-out transfer failed with status ${result.status}`, { cause: result });
-			if (result.bytesWritten !== chunk.byteLength) {
-				throw new WebUSBError(
-					`PL2303 bulk-out transfer wrote ${result.bytesWritten} of ${chunk.byteLength} bytes`,
-					{ cause: result },
-				);
-			}
-			offset += result.bytesWritten;
-		}
+		await transferOutChunks(this.device, endpoint, chunkBytes(transferData, BULK_WRITE_SIZE), 'PL2303');
 	}
 
 	async flush(): Promise<void> {
-		this.clearBulkReadResults();
+		this.bulkReadBuffer.clear();
 	}
 
 	async update(options: UpdateOptions): Promise<number> {
@@ -600,8 +603,12 @@ export class PL2303Driver implements USBSerialDriver {
 		if (options.baudRate === currentOptions.baudRate)
 			return currentOptions.baudRate;
 		const nextOptions = { ...currentOptions, baudRate: options.baudRate };
+		if (options.baudRate > currentOptions.baudRate)
+			this.resizeBulkReads(options.baudRate);
 		const baudRate = await this.configure(nextOptions);
 		this.options = { ...nextOptions, baudRate };
+		if (this.opened)
+			this.resizeBulkReads(baudRate);
 		return baudRate;
 	}
 
@@ -624,12 +631,19 @@ export class PL2303Driver implements USBSerialDriver {
 		return this.getPortStatus();
 	}
 
-	private startBulkReads(): void {
+	private resizeBulkReads(baudRate: number): void {
 		const endpoint = this.requireEndpoints().inEndpoint;
-		const transferLength = Math.max(BULK_READ_SIZE, endpoint.packetSize);
-		const count = this.deviceInfo.bulkReadCount ?? BULK_READ_COUNT;
-		for (let index = 0; index < count; index++)
+		const deepQueue = this.deviceInfo.bulkReadCount === undefined && isBrowserUSBDevice(this.device);
+		this.bulkReadTarget = deepQueue ?
+			browserBulkReadCount(baudRate) :
+			this.deviceInfo.bulkReadCount ?? BULK_READ_COUNT;
+		const transferLength = deepQueue ? endpoint.packetSize : Math.max(BULK_READ_SIZE, endpoint.packetSize);
+		if (debug.enabled)
+			debug('%d bulk-in transfers of %d bytes at %d baud', this.bulkReadTarget, transferLength, baudRate);
+		while (this.bulkReadActive < this.bulkReadTarget) {
+			this.bulkReadActive++;
 			void this.runBulkRead(endpoint.endpointNumber, transferLength);
+		}
 	}
 
 	private async runBulkRead(endpoint: number, transferLength: number): Promise<void> {
@@ -650,20 +664,26 @@ export class PL2303Driver implements USBSerialDriver {
 					return;
 				}
 
-				transfer = this.device.transferIn(endpoint, transferLength);
+				const retire = this.bulkReadActive > this.bulkReadTarget;
+				if (!retire)
+					transfer = this.device.transferIn(endpoint, transferLength);
 				if (result.data?.byteLength)
 					this.finishBulkRead(dataViewBytes(result.data));
+				if (retire)
+					return;
 			}
 		} catch (error) {
 			if (this.opened)
 				this.failBulkRead(error);
+		} finally {
+			this.bulkReadActive--;
 		}
 	}
 
 	private finishBulkRead(result: Uint8Array): void {
 		const receiver = this.bulkReadReceiver;
 		if (!receiver) {
-			this.bulkReadResults.push(result);
+			this.bulkReadBuffer.write(result);
 			return;
 		}
 		this.bulkReadReceiver = undefined;
@@ -672,8 +692,7 @@ export class PL2303Driver implements USBSerialDriver {
 			receiver.buffer.set(result, receiver.offset);
 		} else {
 			receiver.buffer.set(result.subarray(0, count), receiver.offset);
-			this.bulkReadResults.push(result);
-			this.bulkReadResultOffset = count;
+			this.bulkReadBuffer.write(result.subarray(count));
 		}
 		receiver.resolve(count);
 	}
@@ -687,47 +706,6 @@ export class PL2303Driver implements USBSerialDriver {
 			this.bulkReadReceiver = undefined;
 			receiver.reject(this.bulkReadFailure.error);
 		}
-	}
-
-	private consumeBulkReadResults(buffer: Uint8Array, offset: number, length: number): number {
-		const results = this.bulkReadResults;
-		let resultIndex = this.bulkReadResultIndex;
-		let resultOffset = this.bulkReadResultOffset;
-		let bytesRead = 0;
-		while (bytesRead < length) {
-			const result = results[resultIndex];
-			if (!result)
-				break;
-			const count = Math.min(length - bytesRead, result.length - resultOffset);
-			if (count === result.length) {
-				buffer.set(result, offset + bytesRead);
-			} else {
-				buffer.set(
-					result.subarray(resultOffset, resultOffset + count),
-					offset + bytesRead,
-				);
-			}
-			bytesRead += count;
-			resultOffset += count;
-			if (resultOffset === result.length) {
-				resultIndex++;
-				resultOffset = 0;
-			}
-		}
-
-		if (resultIndex === results.length) {
-			this.clearBulkReadResults();
-		} else {
-			this.bulkReadResultIndex = resultIndex;
-			this.bulkReadResultOffset = resultOffset;
-		}
-		return bytesRead;
-	}
-
-	private clearBulkReadResults(): void {
-		this.bulkReadResults.length = 0;
-		this.bulkReadResultIndex = 0;
-		this.bulkReadResultOffset = 0;
 	}
 
 	private startStatusRead(): void {

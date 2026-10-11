@@ -1,4 +1,4 @@
-export { WebUSBBinding } from './browser.js';
+export { WEBUSB_SERIAL_FILTERS, WebUSBBinding } from './browser.js';
 export type {
 	WebUSBBindingInterface,
 	WebUSBOpenOptions,

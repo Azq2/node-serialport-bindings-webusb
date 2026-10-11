@@ -74,7 +74,7 @@ function uniqueFilters(filters: readonly USBDeviceFilter[]): USBDeviceFilter[] {
 	});
 }
 
-export const SUPPORTED_USB_FILTERS: readonly USBDeviceFilter[] = uniqueFilters(
+export const WEBUSB_SERIAL_FILTERS: readonly USBDeviceFilter[] = uniqueFilters(
 	DRIVER_DEFINITIONS.flatMap(definition => definition.filters),
 );
 

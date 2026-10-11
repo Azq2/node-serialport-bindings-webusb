@@ -484,7 +484,8 @@ export class USBSerialDevice implements USBDevice {
 	}
 
 	private takeInput(endpointNumber: number, length: number): Uint8Array | undefined {
-		if (this.getEndpoint('in', endpointNumber).type === 'interrupt')
+		const endpoint = this.getEndpoint('in', endpointNumber);
+		if (endpoint.type === 'interrupt')
 			return undefined;
 		if (this.inputLength === 0)
 			return undefined;
@@ -499,14 +500,16 @@ export class USBSerialDevice implements USBDevice {
 			if (this.inputOffset === chunk.length) {
 				this.inputIndex++;
 				this.inputOffset = 0;
+				if (chunk.length % endpoint.packetSize !== 0)
+					break;
 			}
 		}
-		this.inputLength -= data.length;
+		this.inputLength -= offset;
 		if (this.inputLength === 0) {
 			this.input = [];
 			this.inputIndex = 0;
 		}
-		return data;
+		return data.subarray(0, offset);
 	}
 
 	private scheduleInputDelivery(): void {

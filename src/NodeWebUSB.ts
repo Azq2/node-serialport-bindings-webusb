@@ -1,5 +1,5 @@
 import { WebUSB, type Device, type Endpoint, type Transfer } from 'usb';
-import { SUPPORTED_USB_FILTERS } from './drivers/registry.js';
+import { WEBUSB_SERIAL_FILTERS } from './drivers/registry.js';
 import { WebUSBError } from './WebUSBError.js';
 
 // usb 2.x decodeVersion() parses the major byte as decimal, e.g. 0x10 becomes 10.
@@ -114,7 +114,7 @@ export class NodeWebUSB extends WebUSB {
 	private readonly adaptedDevices = new WeakSet<USBDevice>();
 
 	constructor() {
-		super({ allowedDevices: [...SUPPORTED_USB_FILTERS] });
+		super({ allowedDevices: [...WEBUSB_SERIAL_FILTERS] });
 	}
 
 	override async getDevices(): Promise<USBDevice[]> {

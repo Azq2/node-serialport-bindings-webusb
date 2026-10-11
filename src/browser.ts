@@ -7,6 +7,7 @@ function getBrowserUSB(): USB {
 	return navigator.usb;
 }
 
+export { WEBUSB_SERIAL_FILTERS } from './drivers/registry.js';
 export const WebUSBBinding = createWebUSBBinding(getBrowserUSB);
 export type {
 	WebUSBBindingInterface,

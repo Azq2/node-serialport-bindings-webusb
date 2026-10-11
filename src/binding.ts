@@ -3,7 +3,7 @@ import { listUSBPorts } from './discovery.js';
 import {
 	getUSBSerialDriverDefinition,
 	getUSBSerialInterfaceNumbers,
-	SUPPORTED_USB_FILTERS,
+	WEBUSB_SERIAL_FILTERS,
 } from './drivers/registry.js';
 import type { USBSerialDriver } from './drivers/types.js';
 import { WebUSBError } from './WebUSBError.js';
@@ -46,7 +46,7 @@ function resolveOpenOptions(options: WebUSBOpenOptions): ResolvedWebUSBOpenOptio
 function resolveUSBRequestOptions(options?: USBDeviceRequestOptions): USBDeviceRequestOptions {
 	if (options?.filters.length)
 		return options;
-	return { ...options, filters: [...SUPPORTED_USB_FILTERS] };
+	return { ...options, filters: [...WEBUSB_SERIAL_FILTERS] };
 }
 
 async function selectPort(

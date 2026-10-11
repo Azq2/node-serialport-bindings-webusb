@@ -1,5 +1,5 @@
 import { WebUSBBinding, type WebUSBPortInfo } from '../../../src/index.js';
-import { SUPPORTED_USB_FILTERS } from '../../../src/drivers/registry.js';
+import { WEBUSB_SERIAL_FILTERS } from '../../../src/drivers/registry.js';
 import { loopbackBaudRates, type StressLoopbackResult } from '../../Loopback.js';
 import { USBSerialDevice, type USBSerialDeviceKind } from '../../USBSerialDevice.js';
 import { WebUSBEmulator } from '../../WebUSBEmulator.js';
@@ -83,7 +83,7 @@ async function requestPort(
 	deviceId: string | null,
 	serialNumber?: string,
 ): Promise<WebUSBPortInfo> {
-	let filters: USBDeviceFilter[] = [...SUPPORTED_USB_FILTERS];
+	let filters: USBDeviceFilter[] = [...WEBUSB_SERIAL_FILTERS];
 	let requestedVendorId: number | undefined;
 	let requestedProductId: number | undefined;
 	if (deviceId !== null) {

@@ -8,6 +8,7 @@ function getNodeUSB(): USB {
 	return provider;
 }
 
+export { WEBUSB_SERIAL_FILTERS } from './drivers/registry.js';
 export const WebUSBBinding = createWebUSBBinding(getNodeUSB);
 export type {
 	WebUSBBindingInterface,
