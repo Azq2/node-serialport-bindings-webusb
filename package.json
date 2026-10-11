@@ -1,6 +1,6 @@
 {
 	"name": "serialport-bindings-webusb",
-	"version": "0.1.5",
+	"version": "0.1.6",
 	"description": "WebUSB and node-usb serial port bindings",
 	"type": "module",
 	"main": "dist/src/node.js",
