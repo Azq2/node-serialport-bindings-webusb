@@ -24,7 +24,8 @@ interface PendingTransfer {
 	reject(error: unknown): void;
 }
 
-export type USBSerialDeviceKind = 'pl2303' | 'ch341' | 'cp210x' | 'ftdi' | 'cdc-acm';
+export type USBSerialDeviceKind =
+	'pl2303' | 'ch341' | 'cp210x' | 'ftdi' | 'cdc-acm' | 'infineon-brom' | 'infineon-bootcore';
 
 const DEFAULT_DEVICE_IDS: Readonly<Record<USBSerialDeviceKind, readonly [number, number]>> = {
 	'pl2303': [0x067B, 0x2303],
@@ -32,6 +33,8 @@ const DEFAULT_DEVICE_IDS: Readonly<Record<USBSerialDeviceKind, readonly [number,
 	'cp210x': [0x10C4, 0xEA60],
 	'ftdi': [0x0403, 0x6001],
 	'cdc-acm': [0x04DA, 0x2129],
+	'infineon-brom': [0x058B, 0x0015],
+	'infineon-bootcore': [0x058B, 0x0015],
 };
 
 function copyBufferSource(data?: BufferSource): Uint8Array {
@@ -117,12 +120,41 @@ function createUSBSerialInterfaces(kind: USBSerialDeviceKind): EmulatedUSBInterf
 	return [createInterface(0, endpoints)];
 }
 
+function createInfineonBROMInterfaces(): EmulatedUSBInterface[] {
+	const bulkEndpoints: USBEndpoint[] = [
+		{ endpointNumber: 1, direction: 'in', type: 'bulk', packetSize: 64 },
+		{ endpointNumber: 2, direction: 'out', type: 'bulk', packetSize: 64 },
+	];
+	return [
+		createInterface(0, bulkEndpoints, 0xFF, 0xFF, 0xFF),
+		createInterface(1, bulkEndpoints, 0xFF, 0xFF, 0xFF),
+		createInterface(2, [
+			{ endpointNumber: 1, direction: 'in', type: 'isochronous', packetSize: 256 },
+			{ endpointNumber: 2, direction: 'out', type: 'isochronous', packetSize: 256 },
+		], 0xFF, 0xFF, 0xFF),
+	];
+}
+
+function createInfineonBootcoreInterfaces(): EmulatedUSBInterface[] {
+	return [createInterface(0, [
+		{ endpointNumber: 3, direction: 'in', type: 'bulk', packetSize: 64 },
+		{ endpointNumber: 4, direction: 'out', type: 'bulk', packetSize: 64 },
+	], 0xDC)];
+}
+
 function createInterfaces(
 	kind: USBSerialDeviceKind,
 ): EmulatedUSBInterface[] {
-	if (kind === 'pl2303')
-		return createPL2303Interfaces();
-	return createUSBSerialInterfaces(kind);
+	switch (kind) {
+		case 'pl2303': return createPL2303Interfaces();
+		case 'infineon-brom': return createInfineonBROMInterfaces();
+		case 'infineon-bootcore': return createInfineonBootcoreInterfaces();
+		default: return createUSBSerialInterfaces(kind);
+	}
+}
+
+function isInfineonBoot(kind: USBSerialDeviceKind): boolean {
+	return kind === 'infineon-brom' || kind === 'infineon-bootcore';
 }
 
 function defaultDeviceVersion(kind: USBSerialDeviceKind): readonly [number, number, number] {
@@ -137,7 +169,7 @@ export class USBSerialDevice implements USBDevice {
 	readonly deviceSubclass = 0;
 	readonly deviceProtocol = 0;
 	readonly configurations: USBConfiguration[];
-	readonly deviceClass = 0;
+	readonly deviceClass: number;
 	readonly usbVersionMajor: number;
 	readonly usbVersionMinor: number;
 	readonly usbVersionSubminor: number;
@@ -160,6 +192,7 @@ export class USBSerialDevice implements USBDevice {
 	constructor(readonly kind: USBSerialDeviceKind = 'pl2303') {
 		const ids = DEFAULT_DEVICE_IDS[this.kind];
 		[this.vendorId, this.productId] = ids;
+		this.deviceClass = this.kind === 'infineon-bootcore' ? 0x02 : 0;
 		const usbVersion = [1, 1, 0];
 		const deviceVersion = defaultDeviceVersion(this.kind);
 		this.configurationDescriptor = {
@@ -269,7 +302,10 @@ export class USBSerialDevice implements USBDevice {
 			case 'ch341': return this.controlTransferInCH341(setup, length);
 			case 'cp210x': return this.controlTransferInCP210x(setup, length);
 			case 'ftdi': return this.controlTransferInFTDI(setup, length);
-			case 'cdc-acm': return { status: 'stall' };
+			case 'cdc-acm':
+			case 'infineon-brom':
+			case 'infineon-bootcore':
+				return { status: 'stall' };
 		}
 	}
 
@@ -285,6 +321,9 @@ export class USBSerialDevice implements USBDevice {
 			case 'cp210x': return this.controlTransferOutCP210x(setup, bytes);
 			case 'ftdi': return this.controlTransferOutFTDI(setup, bytes);
 			case 'cdc-acm': return this.controlTransferOutCDCACM(setup, bytes);
+			case 'infineon-brom':
+			case 'infineon-bootcore':
+				return { status: 'stall', bytesWritten: 0 };
 		}
 	}
 
@@ -489,7 +528,10 @@ export class USBSerialDevice implements USBDevice {
 			return undefined;
 		if (this.inputLength === 0)
 			return undefined;
-		const data = new Uint8Array(Math.min(length, this.inputLength));
+		const transferLength = this.availableTransferLength(endpoint, length);
+		if (isInfineonBoot(this.kind) && transferLength < length && transferLength % endpoint.packetSize === 0)
+			return undefined;
+		const data = new Uint8Array(transferLength);
 		let offset = 0;
 		while (offset < data.length) {
 			const chunk = this.input[this.inputIndex];
@@ -510,6 +552,19 @@ export class USBSerialDevice implements USBDevice {
 			this.inputIndex = 0;
 		}
 		return data.subarray(0, offset);
+	}
+
+	private availableTransferLength(endpoint: USBEndpoint, length: number): number {
+		let count = 0;
+		let offset = this.inputOffset;
+		for (let index = this.inputIndex; index < this.input.length && count < length; index++) {
+			const chunk = this.input[index];
+			count += Math.min(length - count, chunk.length - offset);
+			offset = 0;
+			if (count < length && chunk.length % endpoint.packetSize !== 0)
+				break;
+		}
+		return count;
 	}
 
 	private scheduleInputDelivery(): void {

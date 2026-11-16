@@ -12,6 +12,7 @@ Supported drivers:
 - CP210x
 - FTDI
 - CDC-ACM
+- Infineon USB boot
 
 # INSTALL
 

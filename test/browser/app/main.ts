@@ -1,5 +1,6 @@
 import { WebUSBBinding, type WebUSBPortInfo } from '../../../src/index.js';
 import { WEBUSB_SERIAL_FILTERS } from '../../../src/drivers/registry.js';
+import { INFINEON_BOOT_DEVICE, readBootcoreInfo, type BootcoreResult } from '../../InfineonBootTests.js';
 import { loopbackBaudRates, type StressLoopbackResult } from '../../Loopback.js';
 import { USBSerialDevice, type USBSerialDeviceKind } from '../../USBSerialDevice.js';
 import { WebUSBEmulator } from '../../WebUSBEmulator.js';
@@ -24,6 +25,7 @@ export interface BrowserUSBTestAPI {
 	runAT(): Promise<string[]>;
 	runBFC(): Promise<BFCResult>;
 	runChaos(): Promise<ChaosResult>;
+	runInfineonBoot(stopTimeout: boolean): Promise<BootcoreResult>;
 }
 
 declare global {
@@ -185,6 +187,31 @@ async function runChaos(): Promise<ChaosResult> {
 	return { bytesRead: result.bytesRead, distinctBytes: result.distinctBytes };
 }
 
+function waitForInfineonBootDevice(): Promise<USBDevice> {
+	return new Promise(resolve => {
+		const onConnect = ({ device }: USBConnectionEvent) => {
+			if (device.vendorId !== INFINEON_BOOT_DEVICE.vendorId || device.productId !== INFINEON_BOOT_DEVICE.productId)
+				return;
+			navigator.usb.removeEventListener('connect', onConnect);
+			resolve(device);
+		};
+		navigator.usb.addEventListener('connect', onConnect);
+	});
+}
+
+async function runInfineonBoot(stopTimeout: boolean): Promise<BootcoreResult> {
+	browserStatus.value = 'waiting';
+	const usbDevice = await waitForInfineonBootDevice();
+	browserStatus.value = 'opening';
+	const binding = await WebUSBBinding.open({ path: 'webusb://infineon-boot', usbDevice, baudRate: 115200 });
+	browserStatus.value = 'running';
+	try {
+		return await readBootcoreInfo(binding, stopTimeout);
+	} finally {
+		await binding.close();
+	}
+}
+
 window.browserUSBTest = {
 	runLoopback,
 	loopbackBaudRates: () => selectedPort ? loopbackBaudRates(selectedPort.nativeDevice) : [],
@@ -192,4 +219,5 @@ window.browserUSBTest = {
 	runAT,
 	runBFC,
 	runChaos,
+	runInfineonBoot,
 };

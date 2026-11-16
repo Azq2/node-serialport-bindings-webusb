@@ -26,12 +26,14 @@
 		"test:hardware:at": "WEBUSB_HARDWARE=1 vitest run test/hardware/AT.test.ts",
 		"test:hardware:bfc": "WEBUSB_HARDWARE=1 vitest run test/hardware/BFC.test.ts",
 		"test:hardware:chaos": "WEBUSB_HARDWARE=1 vitest run test/hardware/Chaos.test.ts",
+		"test:hardware:infineon-boot": "WEBUSB_HARDWARE=1 vitest run test/hardware/InfineonBoot.test.ts",
 		"test:hardware:usb-serial-emu": "WEBUSB_HARDWARE=1 vitest run test/hardware/USBSerialEmulator.test.ts",
 		"test:browser": "playwright test",
 		"test:browser:hardware": "pnpm build:test && WEBUSB_HARDWARE=1 playwright test test/browser/HardwareLoopback.test.ts",
 		"test:browser:hardware:at": "pnpm build:test && WEBUSB_HARDWARE=1 playwright test test/browser/HardwareAT.test.ts",
 		"test:browser:hardware:bfc": "pnpm build:test && WEBUSB_HARDWARE=1 playwright test test/browser/HardwareBFC.test.ts",
 		"test:browser:hardware:chaos": "pnpm build:test && WEBUSB_HARDWARE=1 playwright test test/browser/HardwareChaos.test.ts",
+		"test:browser:hardware:infineon-boot": "pnpm build:test && WEBUSB_HARDWARE=1 playwright test test/browser/HardwareInfineonBoot.test.ts",
 		"test:browser:hardware:usb-serial-emu": "pnpm build:test && WEBUSB_HARDWARE=1 playwright test test/browser/HardwareUSBSerialEmulator.test.ts"
 	},
 	"engines": {

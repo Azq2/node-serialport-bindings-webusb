@@ -3,9 +3,10 @@ import { CDCACMDriver } from './CDCACM/CDCACMDriver.js';
 import { CH341Driver } from './CH341/CH341Driver.js';
 import { CP210xDriver } from './CP210x/CP210xDriver.js';
 import { FTDIDriver } from './FTDI/FTDIDriver.js';
+import { InfineonBootDriver } from './InfineonBoot/InfineonBootDriver.js';
 import { PL2303Driver } from './PL2303/PL2303Driver.js';
 
-export type USBSerialDriverType = 'pl2303' | 'ch341' | 'ftdi' | 'cp210x' | 'cdc-acm';
+export type USBSerialDriverType = 'pl2303' | 'ch341' | 'ftdi' | 'cp210x' | 'cdc-acm' | 'infineon-boot';
 
 interface USBSerialDriverDefinition {
 	readonly type: USBSerialDriverType;
@@ -54,6 +55,8 @@ const DRIVER_DEFINITIONS: readonly USBSerialDriverDefinition[] = [
 			filters: CDCACMDriver.usbFilters,
 			matches: CDCACMDriver.matches,
 		}),
+	createDefinition('infineon-boot', InfineonBootDriver.supportedDevices, InfineonBootDriver.getInterfaceNumbers,
+		(device, interfaceNumber) => new InfineonBootDriver(device, interfaceNumber)),
 ];
 
 function uniqueFilters(filters: readonly USBDeviceFilter[]): USBDeviceFilter[] {

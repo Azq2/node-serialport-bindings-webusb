@@ -31,3 +31,14 @@ export function readHardwareSelector(): HardwareSelector | undefined {
 		serialNumber: process.env.WEBUSB_SERIAL || undefined,
 	};
 }
+
+export function infineonStopTimeoutEnabled(): boolean {
+	return process.env.WEBUSB_INFINEON_STOP_TIMEOUT === '1';
+}
+
+export function readHardwareWaitTimeout(): number {
+	const seconds = Number(process.env.WEBUSB_WAIT_TIMEOUT ?? '120');
+	if (!Number.isFinite(seconds) || seconds <= 0)
+		throw new Error('WEBUSB_WAIT_TIMEOUT must be a positive number of seconds');
+	return seconds * 1000;
+}
